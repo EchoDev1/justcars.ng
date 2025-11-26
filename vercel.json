@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd justcars.ng && npm run build",
+  "devCommand": "cd justcars.ng && npm run dev",
+  "installCommand": "cd justcars.ng && npm install",
+  "framework": "nextjs",
+  "outputDirectory": "justcars.ng/.next"
+}
