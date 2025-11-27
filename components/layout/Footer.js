@@ -143,15 +143,15 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start space-x-3">
                 <MapPin size={20} className="text-accent-blue mt-1 flex-shrink-0" />
-                <span className="text-sm text-muted">Lagos, Nigeria</span>
+                <span className="text-sm text-muted">Abuja, Nigeria</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Phone size={20} className="text-accent-green flex-shrink-0" />
-                <span className="text-sm text-muted">+234 800 000 0000</span>
+                <span className="text-sm text-muted">08148527697</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail size={20} className="text-secondary flex-shrink-0" />
-                <span className="text-sm text-muted">info@justcars.ng</span>
+                <span className="text-sm text-muted">Admin@justcars.ng</span>
               </li>
               <li className="flex items-center space-x-3">
                 <MessageCircle size={20} className="text-accent-green flex-shrink-0" />

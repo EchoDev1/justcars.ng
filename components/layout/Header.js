@@ -7,12 +7,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Car, Menu, X, Search } from 'lucide-react'
+import { Car, Menu, X, Search, User, Heart, MessageCircle, LogOut, Settings } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const { user, isAuthenticated, isBuyer, signOut } = useAuth()
 
   const navLinks = [
     { href: '/', label: 'Home' },
@@ -28,6 +31,15 @@ export default function Header() {
 
   const toggleMobileSearch = () => {
     setMobileSearchOpen(!mobileSearchOpen)
+  }
+
+  const toggleAccountMenu = () => {
+    setAccountMenuOpen(!accountMenuOpen)
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    setAccountMenuOpen(false)
   }
 
   return (
@@ -54,11 +66,72 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
-              <Link href="/login">
-                <Button variant="primary" size="sm">
-                  Admin Login
-                </Button>
-              </Link>
+
+              {/* Account Button - Shows buyer account if authenticated */}
+              {isAuthenticated ? (
+                <div className="relative">
+                  <button
+                    onClick={toggleAccountMenu}
+                    className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg transition-all border border-white/20"
+                  >
+                    <User size={20} className="text-white" />
+                    <span className="text-white font-medium">My Account</span>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {accountMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-50">
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <p className="text-sm text-gray-500">Signed in as</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{user?.email}</p>
+                      </div>
+
+                      <Link
+                        href="/buyer/saved"
+                        className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 text-gray-700"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <Heart size={18} />
+                        <span>Saved Cars</span>
+                      </Link>
+
+                      <Link
+                        href="/buyer/chats"
+                        className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 text-gray-700"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <MessageCircle size={18} />
+                        <span>My Chats</span>
+                      </Link>
+
+                      <Link
+                        href="/buyer/settings"
+                        className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 text-gray-700"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <Settings size={18} />
+                        <span>Settings</span>
+                      </Link>
+
+                      <hr className="my-2" />
+
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center space-x-2 px-4 py-2 hover:bg-red-50 text-red-600 w-full"
+                      >
+                        <LogOut size={18} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link href="/buyer/auth">
+                  <Button variant="primary" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu & Search Icons */}
@@ -118,11 +191,45 @@ export default function Header() {
           </nav>
 
           <div className="mobile-menu-footer">
-            <Link href="/login" onClick={toggleMobileMenu}>
-              <Button variant="primary" size="md" className="w-full">
-                Admin Login
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <div className="space-y-2">
+                <div className="px-4 py-3 bg-white/10 rounded-lg mb-3">
+                  <p className="text-xs text-white/70">Signed in as</p>
+                  <p className="text-sm font-medium text-white truncate">{user?.email}</p>
+                </div>
+
+                <Link href="/buyer/saved" onClick={toggleMobileMenu}>
+                  <button className="w-full flex items-center space-x-2 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-all">
+                    <Heart size={18} />
+                    <span>Saved Cars</span>
+                  </button>
+                </Link>
+
+                <Link href="/buyer/chats" onClick={toggleMobileMenu}>
+                  <button className="w-full flex items-center space-x-2 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-all">
+                    <MessageCircle size={18} />
+                    <span>My Chats</span>
+                  </button>
+                </Link>
+
+                <button
+                  onClick={() => {
+                    handleSignOut()
+                    toggleMobileMenu()
+                  }}
+                  className="w-full flex items-center space-x-2 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-200 transition-all"
+                >
+                  <LogOut size={18} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <Link href="/buyer/auth" onClick={toggleMobileMenu}>
+                <Button variant="primary" size="md" className="w-full">
+                  Sign In
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
