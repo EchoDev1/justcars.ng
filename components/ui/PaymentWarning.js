@@ -40,7 +40,7 @@ export default function PaymentWarning() {
         <div className="payment-warning-content">
           <h3 className="payment-warning-title">Important Payment Notice</h3>
           <p className="payment-warning-text">
-            All payment should be made only directly to admin for proper moderation.
+            All payment should be made only directly to JustCars.ng escrow account for proper moderation.
           </p>
         </div>
 
