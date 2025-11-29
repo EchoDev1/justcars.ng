@@ -7,10 +7,12 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Gauge, Calendar, CheckCircle, Heart, MessageCircle, Eye, Fuel, Settings, ShoppingCart } from 'lucide-react'
+import { MapPin, Gauge, Calendar, CheckCircle, Heart, MessageCircle, Eye, Fuel, Settings } from 'lucide-react'
 import { formatNaira, formatNumber } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
+import DealerBadge, { DealerBadgeIcon } from '@/components/ui/DealerBadge'
 import ChatButton from '@/components/chat/ChatButton'
+import EscrowButton from '@/components/escrow/EscrowButton'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -77,12 +79,6 @@ export default function CarCard({ car, is3D = true }) {
     } catch (error) {
       console.error('Error saving car:', error)
     }
-  }
-
-  const handleBuy = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    router.push(`/buyer/checkout/${car.id}`)
   }
 
   const handleWhatsApp = (e) => {
@@ -240,14 +236,18 @@ export default function CarCard({ car, is3D = true }) {
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-4 border-t border-white/10">
-                {/* Buy Button */}
-                <button
-                  onClick={handleBuy}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-500/50"
-                >
-                  <ShoppingCart size={18} />
-                  Buy Now
-                </button>
+                {/* Escrow Protection Button */}
+                {car.dealers && (
+                  <div onClick={(e) => e.preventDefault()}>
+                    <div className="w-full">
+                      <EscrowButton
+                        car={car}
+                        dealer={car.dealers}
+                        variant="primary"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Chat with Dealer */}
                 {car.dealers && (
@@ -263,14 +263,24 @@ export default function CarCard({ car, is3D = true }) {
 
               {/* Dealer Info */}
               {car.dealers && (
-                <div className="flex items-center justify-between pt-3 text-sm text-gray-400">
-                  <span className="font-medium text-white">{car.dealers.name}</span>
-                  <button
-                    onClick={handleWhatsApp}
-                    className="text-green-400 hover:text-green-300 transition-colors"
-                  >
-                    WhatsApp
-                  </button>
+                <div className="pt-3 border-t border-white/10 mt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">{car.dealers.name}</span>
+                      {car.dealers.badge_type && car.dealers.badge_type !== 'none' && (
+                        <DealerBadgeIcon badgeType={car.dealers.badge_type} size={16} />
+                      )}
+                    </div>
+                    <button
+                      onClick={handleWhatsApp}
+                      className="text-green-400 hover:text-green-300 transition-colors text-sm"
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                  {car.dealers.badge_type && car.dealers.badge_type !== 'none' && (
+                    <DealerBadge badgeType={car.dealers.badge_type} size="xs" />
+                  )}
                 </div>
               )}
             </div>
@@ -356,8 +366,20 @@ export default function CarCard({ car, is3D = true }) {
 
           {/* Dealer Info */}
           {car.dealers && (
-            <div className="text-sm text-gray-500 border-t pt-2">
-              {car.dealers.name}
+            <div className="border-t pt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{car.dealers.name}</span>
+                  {car.dealers.badge_type && car.dealers.badge_type !== 'none' && (
+                    <DealerBadgeIcon badgeType={car.dealers.badge_type} size={14} />
+                  )}
+                </div>
+              </div>
+              {car.dealers.badge_type && car.dealers.badge_type !== 'none' && (
+                <div className="mt-1">
+                  <DealerBadge badgeType={car.dealers.badge_type} size="xs" />
+                </div>
+              )}
             </div>
           )}
         </div>

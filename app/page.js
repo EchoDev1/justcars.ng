@@ -23,6 +23,10 @@ export default function HomePage() {
   const [progressLineVisible, setProgressLineVisible] = useState(false)
   const [testimonialsVisible, setTestimonialsVisible] = useState([false, false, false])
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const [featuredCars, setFeaturedCars] = useState([])
+  const [latestArrivals, setLatestArrivals] = useState([])
+  const [loadingFeatured, setLoadingFeatured] = useState(true)
+  const [loadingLatest, setLoadingLatest] = useState(true)
 
   // Handle scroll for Back to Top button
   useEffect(() => {
@@ -199,8 +203,60 @@ export default function HomePage() {
     }
   }, [])
 
-  // Sample featured cars data
-  const featuredCars = [
+  // Fetch Premium Verified Cars
+  useEffect(() => {
+    const fetchPremiumCars = async () => {
+      try {
+        setLoadingFeatured(true)
+        const response = await fetch('/api/cars/premium?limit=6')
+        const data = await response.json()
+
+        if (data.cars && data.cars.length > 0) {
+          setFeaturedCars(data.cars)
+        } else {
+          // Fallback to sample data if no premium cars available
+          setFeaturedCars(sampleFeaturedCars)
+        }
+      } catch (error) {
+        console.error('Error fetching premium cars:', error)
+        // Fallback to sample data on error
+        setFeaturedCars(sampleFeaturedCars)
+      } finally {
+        setLoadingFeatured(false)
+      }
+    }
+
+    fetchPremiumCars()
+  }, [])
+
+  // Fetch Latest Arrivals
+  useEffect(() => {
+    const fetchLatestCars = async () => {
+      try {
+        setLoadingLatest(true)
+        const response = await fetch('/api/cars/latest?limit=5')
+        const data = await response.json()
+
+        if (data.cars && data.cars.length > 0) {
+          setLatestArrivals(data.cars)
+        } else {
+          // Fallback to sample data if no latest cars available
+          setLatestArrivals(sampleLatestArrivals)
+        }
+      } catch (error) {
+        console.error('Error fetching latest cars:', error)
+        // Fallback to sample data on error
+        setLatestArrivals(sampleLatestArrivals)
+      } finally {
+        setLoadingLatest(false)
+      }
+    }
+
+    fetchLatestCars()
+  }, [])
+
+  // Sample featured cars data (fallback)
+  const sampleFeaturedCars = [
     {
       id: 1,
       make: 'Toyota',
@@ -386,8 +442,8 @@ export default function HomePage() {
     { name: 'Ford', count: 167, logo: 'F' }
   ]
 
-  // Latest arrivals data
-  const latestArrivals = [
+  // Latest arrivals data (fallback)
+  const sampleLatestArrivals = [
     {
       id: 1,
       make: 'Porsche',
@@ -442,6 +498,37 @@ export default function HomePage() {
       currency: 'NGN',
       minimumFractionDigits: 0
     }).format(price)
+  }
+
+  // Calculate time ago from timestamp
+  const getTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Recently'
+
+    const now = new Date()
+    const past = new Date(timestamp)
+    const diffMs = now - past
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 60) {
+      return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`
+    } else if (diffHours < 24) {
+      return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`
+    } else if (diffDays < 30) {
+      return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`
+    } else {
+      return 'Recently'
+    }
+  }
+
+  // Get primary image from car
+  const getPrimaryImage = (car) => {
+    if (!car.car_images || car.car_images.length === 0) {
+      return '/images/placeholder-car.jpg'
+    }
+    const primaryImage = car.car_images.find(img => img.is_primary) || car.car_images[0]
+    return primaryImage.image_url || '/images/placeholder-car.jpg'
   }
 
   // Testimonials data
@@ -993,7 +1080,7 @@ export default function HomePage() {
                 <div className="timeline-card">
                   {/* Date Badge */}
                   <div className="timeline-date-badge">
-                    {car.addedAgo}
+                    {car.addedAgo || getTimeAgo(car.created_at)}
                   </div>
 
                   {/* Mini Car Card */}
@@ -1002,7 +1089,7 @@ export default function HomePage() {
                       {/* Car Image */}
                       <div className="timeline-car-image-wrapper">
                         <img
-                          src={car.image}
+                          src={car.image || getPrimaryImage(car)}
                           alt={`${car.make} ${car.model}`}
                           className="timeline-car-image"
                         />

@@ -100,7 +100,7 @@ export default function LuxuryPortalPage() {
           dealers (name),
           car_images (image_url, is_primary)
         `)
-        .gte('price', 100000000)
+        .gte('price', 150000000)
         .order('price', { ascending: false })
         .limit(12)
 
@@ -263,7 +263,7 @@ export default function LuxuryPortalPage() {
           <p className="luxury-hero-description">
             Nigeria's Most Prestigious Collection of Ultra-Premium Vehicles
             <br />
-            <span className="luxury-price-badge">Starting from ₦100 Million</span>
+            <span className="luxury-price-badge">Starting from ₦150 Million</span>
           </p>
 
           {/* Premium Feature Pills */}
@@ -283,7 +283,7 @@ export default function LuxuryPortalPage() {
           </div>
 
           {/* CTA Button */}
-          <Link href="/cars?price=100000000+">
+          <Link href="/cars?price=150000000+">
             <button className="luxury-cta-button">
               <Sparkles size={24} />
               <span>EXPLORE COLLECTION</span>
@@ -560,7 +560,7 @@ export default function LuxuryPortalPage() {
           </p>
 
           <div className="luxury-cta-buttons">
-            <Link href="/cars?price=100000000+">
+            <Link href="/cars?price=150000000+">
               <button className="luxury-cta-primary">
                 <Sparkles size={20} />
                 View Collection

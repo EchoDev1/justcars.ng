@@ -34,10 +34,10 @@ export default function ChatButton({ car, dealer, variant = 'primary' }) {
         return
       }
 
-      // Check if user is a buyer
+      // Check if user is a buyer and get verification status
       const { data: buyerData } = await supabase
         .from('buyers')
-        .select('id')
+        .select('id, verification_status, verification_paid')
         .eq('id', user.id)
         .single()
 
@@ -48,6 +48,34 @@ export default function ChatButton({ car, dealer, variant = 'primary' }) {
           dealerId: dealer.id
         }))
         router.push(`/buyer/auth?carId=${car.id}&action=chat`)
+        return
+      }
+
+      // Check if buyer is verified
+      if (buyerData.verification_status !== 'verified') {
+        // Buyer not verified, redirect to verification page
+        localStorage.setItem('pendingChatCar', JSON.stringify({
+          carId: car.id,
+          dealerId: dealer.id
+        }))
+
+        // Show alert explaining why verification is needed
+        const shouldVerify = confirm(
+          'Chat with dealers is only available to verified buyers.\n\n' +
+          'Benefits of verification:\n' +
+          '• Chat directly with dealers\n' +
+          '• Build trust and credibility\n' +
+          '• Priority treatment from dealers\n' +
+          '• Access to escrow services\n\n' +
+          `Verification fee: ₦2,000\n\n` +
+          'Would you like to get verified now?'
+        )
+
+        if (shouldVerify) {
+          router.push('/buyer/verify')
+        }
+
+        setLoading(false)
         return
       }
 

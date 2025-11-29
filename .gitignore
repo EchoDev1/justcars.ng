@@ -39,3 +39,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local history and temp files
+.history/
+extract_files.js
+extract_files.py
+*.json.backup
+nul
+justcars.ng/
+package-DESKTOP-*.json
+
+# Temporary SQL files (keep migrations in supabase/migrations/)
+APPLY_THIS_SQL.sql
+CHAT_SCHEMA_CLEAN.sql
+CHAT_SCHEMA_FIXED.sql
+COMPLETE_DATABASE_SETUP.sql
+DISABLE_RLS_TEMPORARY.sql
+
+# documentation (optional - remove if you want to commit)
+COMPLETE_IMPLEMENTATION_SUMMARY.md
+DATABASE_SETUP_GUIDE.md
+DEPLOYMENT_GUIDE.md
+FIX_DATABASE_SCHEMA.md
+IMPLEMENTATION_COMPLETE_SUMMARY.md
+IMPLEMENTATION_SUMMARY.md
+MONETIZATION_IMPLEMENTATION_SUMMARY.md
+STEP_BY_STEP_SQL.md

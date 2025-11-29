@@ -18,6 +18,9 @@ function CarsPageContent() {
   const searchParams = useSearchParams()
   const [cars, setCars] = useState([])
   const [loading, setLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 12
   const [filters, setFilters] = useState({
     make: searchParams.get('make') || '',
     minPrice: '',
@@ -38,13 +41,14 @@ function CarsPageContent() {
     setLoading(true)
     const supabase = createClient()
 
+    // Build query with count
     let query = supabase
       .from('cars')
       .select(`
         *,
-        dealers (name),
+        dealers (name, badge_type),
         car_images (image_url, is_primary)
-      `)
+      `, { count: 'exact' })
 
     // Apply filters
     if (filters.make) query = query.eq('make', filters.make)
@@ -66,29 +70,33 @@ function CarsPageContent() {
 
     // Apply sorting
     const [sortField, sortOrder] = sortBy.split('_')
-    if (sortField === 'created') {
-      query = query.order('created_at', { ascending: sortOrder === 'asc' })
+    if (sortField === 'price') {
+      query = query.order('price', { ascending: sortOrder === 'asc' })
+    } else if (sortField === 'year') {
+      query = query.order('year', { ascending: sortOrder === 'asc' })
     } else {
-      query = query.order(sortField, { ascending: sortOrder === 'asc' })
+      query = query.order('created_at', { ascending: sortOrder === 'asc' })
     }
 
-    const { data, error } = await query
+    // Apply pagination
+    const from = (currentPage - 1) * ITEMS_PER_PAGE
+    const to = from + ITEMS_PER_PAGE - 1
+    query = query.range(from, to)
+
+    const { data, error, count } = await query
 
     if (error) {
       console.error('Error fetching cars:', error)
-      console.error('Error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      })
       setCars([])
-    } else {
-      setCars(data || [])
+      setTotalCount(0)
+      setLoading(false)
+      return
     }
 
+    setTotalCount(count || 0)
+    setCars(data || [])
     setLoading(false)
-  }, [filters, searchTerm, sortBy])
+  }, [filters, searchTerm, sortBy, currentPage])
 
   useEffect(() => {
     fetchCars()
@@ -96,6 +104,7 @@ function CarsPageContent() {
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters)
+    setCurrentPage(1) // Reset to first page when filters change
   }
 
   const handleResetFilters = () => {
@@ -113,11 +122,15 @@ function CarsPageContent() {
       verifiedOnly: false
     })
     setSearchTerm('')
+    setCurrentPage(1)
   }
 
   const handleSearch = (term) => {
     setSearchTerm(term)
+    setCurrentPage(1) // Reset to first page when search changes
   }
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -134,12 +147,15 @@ function CarsPageContent() {
           {/* Results Count and Sort */}
           <div className="flex items-center justify-between">
             <p className="text-gray-600">
-              {loading ? 'Loading...' : `${cars.length} car${cars.length !== 1 ? 's' : ''} found`}
+              {loading ? 'Loading...' : `${totalCount} car${totalCount !== 1 ? 's' : ''} found`}
             </p>
             <div className="w-64">
               <Select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setSortBy(e.target.value)
+                  setCurrentPage(1)
+                }}
                 options={[
                   { value: 'created_at_desc', label: 'Recently Added' },
                   { value: 'price_asc', label: 'Price: Low to High' },
@@ -168,7 +184,62 @@ function CarsPageContent() {
             {loading ? (
               <Loading text="Loading cars..." />
             ) : (
-              <CarGrid cars={cars} />
+              <>
+                <CarGrid cars={cars} />
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex justify-center items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+
+                    <div className="flex gap-2">
+                      {[...Array(totalPages)].map((_, idx) => {
+                        const page = idx + 1
+                        // Show first page, last page, current page, and pages around current
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-4 py-2 rounded-lg ${
+                                currentPage === page
+                                  ? 'bg-primary text-white'
+                                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          )
+                        } else if (
+                          page === currentPage - 2 ||
+                          page === currentPage + 2
+                        ) {
+                          return <span key={page} className="px-2 py-2">...</span>
+                        }
+                        return null
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

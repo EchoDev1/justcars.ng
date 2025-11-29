@@ -11,6 +11,8 @@ import ImageGallery from '@/components/cars/ImageGallery'
 import CarGrid from '@/components/cars/CarGrid'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import ChatButton from '@/components/chat/ChatButton'
+import EscrowButton from '@/components/escrow/EscrowButton'
 import { formatNaira, formatNumber, formatDate, generateWhatsAppLink } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -281,14 +283,49 @@ export default async function CarDetailPage({ params }) {
                 </div>
 
                 <div className="space-y-3">
+                  {/* Escrow Purchase - Primary CTA */}
+                  <EscrowButton
+                    car={{
+                      id: car.id,
+                      make: car.make,
+                      model: car.model,
+                      year: car.year,
+                      price: car.price,
+                      status: car.status
+                    }}
+                    dealer={{
+                      id: car.dealers?.id,
+                      name: car.dealers?.name
+                    }}
+                    variant="primary"
+                  />
+
+                  {/* Chat with Dealer */}
+                  <ChatButton
+                    car={{
+                      id: car.id,
+                      make: car.make,
+                      model: car.model,
+                      year: car.year
+                    }}
+                    dealer={{
+                      id: car.dealers?.id,
+                      name: car.dealers?.name
+                    }}
+                    variant="secondary"
+                  />
+
+                  {/* WhatsApp */}
                   <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="block">
                     <Button variant="success" className="w-full flex items-center justify-center gap-2">
                       <MessageCircle size={20} />
                       WhatsApp Inquiry
                     </Button>
                   </a>
+
+                  {/* Phone Call */}
                   <a href={`tel:${car.dealers?.phone}`}>
-                    <Button variant="primary" className="w-full flex items-center justify-center gap-2">
+                    <Button variant="outline" className="w-full flex items-center justify-center gap-2">
                       <Phone size={20} />
                       Call Dealer
                     </Button>
@@ -297,15 +334,21 @@ export default async function CarDetailPage({ params }) {
               </div>
 
               {/* Safety Tips */}
-              <div className="bg-blue-50 rounded-lg p-6">
-                <h3 className="font-bold text-gray-900 mb-3">Safety Tips</h3>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
+                <h3 className="font-bold text-gray-900 mb-3">💡 Secure Purchase Tips</h3>
                 <ul className="text-sm text-gray-700 space-y-2">
-                  <li>• Inspect the car in person before purchase</li>
-                  <li>• Verify all documents are authentic</li>
-                  <li>• Take a test drive</li>
-                  <li>• Meet in a safe public location</li>
-                  <li>• Never send money without seeing the car</li>
+                  <li>✓ Use Escrow Protection for secure payment</li>
+                  <li>✓ Request professional vehicle inspection</li>
+                  <li>✓ Verify all documents are authentic</li>
+                  <li>✓ Take a thorough test drive</li>
+                  <li>✓ Only deal with verified dealers</li>
+                  <li>✓ Never send money without seeing the car</li>
                 </ul>
+                <div className="mt-4 pt-4 border-t border-green-200">
+                  <p className="text-xs text-green-800 font-semibold">
+                    🛡️ Escrow services protect your payment until you approve the car
+                  </p>
+                </div>
               </div>
             </div>
           </div>
