@@ -38,14 +38,12 @@ export default function BuyerVerification() {
     budgetRange: '',
     idType: 'national_id',
     idNumber: '',
-    idFile: null,
-    proofOfIncome: null
+    idFile: null
   })
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [uploadingId, setUploadingId] = useState(false)
-  const [uploadingProof, setUploadingProof] = useState(false)
 
   useEffect(() => {
     fetchBuyerData()
@@ -85,14 +83,13 @@ export default function BuyerVerification() {
     }
   }
 
-  const handleFileUpload = async (file, type) => {
+  const handleFileUpload = async (file) => {
     try {
-      if (type === 'id') setUploadingId(true)
-      else setUploadingProof(true)
+      setUploadingId(true)
 
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop()
-      const fileName = `${buyer.id}_${type}_${Date.now()}.${fileExt}`
+      const fileName = `${buyer.id}_id_${Date.now()}.${fileExt}`
       const filePath = `verification-docs/${fileName}`
 
       const { data, error } = await supabase.storage
@@ -106,21 +103,14 @@ export default function BuyerVerification() {
         .from('verification-documents')
         .getPublicUrl(filePath)
 
-      if (type === 'id') {
-        setFormData(prev => ({ ...prev, idFile: publicUrl }))
-        setUploadingId(false)
-      } else {
-        setFormData(prev => ({ ...prev, proofOfIncome: publicUrl }))
-        setUploadingProof(false)
-      }
-
-      setSuccess(`${type === 'id' ? 'ID' : 'Proof of income'} uploaded successfully`)
+      setFormData(prev => ({ ...prev, idFile: publicUrl }))
+      setUploadingId(false)
+      setSuccess('ID uploaded successfully')
       setTimeout(() => setSuccess(''), 3000)
     } catch (error) {
       console.error('Upload error:', error)
       setError('File upload failed. Please try again.')
-      if (type === 'id') setUploadingId(false)
-      else setUploadingProof(false)
+      setUploadingId(false)
     }
   }
 
@@ -148,18 +138,6 @@ export default function BuyerVerification() {
         })
 
       if (docError) throw docError
-
-      // If proof of income provided, save it too
-      if (formData.proofOfIncome) {
-        await supabase
-          .from('verification_documents')
-          .insert({
-            buyer_id: buyer.id,
-            document_type: 'proof_of_income',
-            document_url: formData.proofOfIncome,
-            verification_status: 'pending'
-          })
-      }
 
       // Update buyer budget range
       if (formData.budgetRange) {
@@ -343,7 +321,6 @@ export default function BuyerVerification() {
               <ul>
                 <li>Valid government-issued ID (National ID, Driver's License, or International Passport)</li>
                 <li>Your budget range (optional but recommended)</li>
-                <li>Proof of income (optional)</li>
                 <li>Verification fee: {formatNaira(BUYER_VERIFICATION_FEE)}</li>
               </ul>
             </div>
@@ -390,31 +367,19 @@ export default function BuyerVerification() {
             <input
               type="file"
               accept="image/*,.pdf"
-              onChange={(e) => handleFileUpload(e.target.files[0], 'id')}
+              onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0])}
               disabled={uploadingId}
             />
-            {formData.idFile && (
+            {uploadingId && (
+              <div className="upload-progress">
+                <div className="loading-spinner"></div>
+                <span>Uploading...</span>
+              </div>
+            )}
+            {formData.idFile && !uploadingId && (
               <div className="upload-success">
                 <CheckCircle2 size={20} />
                 <span>ID uploaded successfully</span>
-              </div>
-            )}
-          </div>
-
-          <div className="upload-box optional">
-            <FileText size={48} />
-            <h3>Proof of Income (Optional)</h3>
-            <p>Payslip, bank statement, or business documents</p>
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => handleFileUpload(e.target.files[0], 'proof')}
-              disabled={uploadingProof}
-            />
-            {formData.proofOfIncome && (
-              <div className="upload-success">
-                <CheckCircle2 size={20} />
-                <span>Proof of income uploaded</span>
               </div>
             )}
           </div>
@@ -798,6 +763,29 @@ export default function BuyerVerification() {
 
         .upload-box input[type="file"] {
           margin-top: 12px;
+        }
+
+        .upload-progress {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 12px;
+          color: #60a5fa;
+          font-weight: 600;
+        }
+
+        .upload-progress .loading-spinner {
+          width: 20px;
+          height: 20px;
+          border: 2px solid rgba(96, 165, 250, 0.3);
+          border-top-color: #60a5fa;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         .upload-success {
