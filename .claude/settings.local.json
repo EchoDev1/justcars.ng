@@ -41,7 +41,8 @@
       "Bash(del \".next\\dev\\lock\" 2)",
       "Bash(cmd /c taskkill /F /PID 12492)",
       "Bash(rm:*)",
-      "Bash(npm update:*)"
+      "Bash(npm update:*)",
+      "Bash(npm outdated:*)"
     ],
     "deny": [],
     "ask": []

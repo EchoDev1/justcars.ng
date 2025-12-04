@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Settings,
@@ -27,7 +27,8 @@ import {
 import Loading from '@/components/ui/Loading'
 
 export default function PaymentAccountsManagement() {
-  const supabase = createClient()
+  // Memoize Supabase client to prevent recreation on every render
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('paystack')
@@ -86,11 +87,8 @@ export default function PaymentAccountsManagement() {
     auto_release_days: 7
   })
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = async () => {
+  // Memoize loadSettings function to prevent recreation
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -138,9 +136,14 @@ export default function PaymentAccountsManagement() {
 
       setLoading(false)
     }
-  }
+  }, [supabase])
 
-  const savePaymentSettings = async (provider, settings) => {
+  useEffect(() => {
+    loadSettings()
+  }, [loadSettings])
+
+  // Memoize savePaymentSettings function
+  const savePaymentSettings = useCallback(async (provider, settings) => {
     try {
       setSaving(true)
 
@@ -179,9 +182,10 @@ export default function PaymentAccountsManagement() {
       alert('Failed to save settings. Please try again.')
       setSaving(false)
     }
-  }
+  }, [supabase])
 
-  const savePlatformSettings = async () => {
+  // Memoize savePlatformSettings function
+  const savePlatformSettings = useCallback(async () => {
     try {
       setSaving(true)
 
@@ -217,9 +221,10 @@ export default function PaymentAccountsManagement() {
       alert('Failed to save platform settings. Please try again.')
       setSaving(false)
     }
-  }
+  }, [supabase, platformSettings])
 
-  const addEscrowAccount = async () => {
+  // Memoize addEscrowAccount function
+  const addEscrowAccount = useCallback(async () => {
     try {
       if (!newAccount.bank_name || !newAccount.account_number || !newAccount.account_name) {
         alert('Please fill in all account details')
@@ -260,9 +265,10 @@ export default function PaymentAccountsManagement() {
       alert('Failed to add escrow account. Please try again.')
       setSaving(false)
     }
-  }
+  }, [supabase, newAccount, loadSettings])
 
-  const deleteEscrowAccount = async (id) => {
+  // Memoize deleteEscrowAccount function
+  const deleteEscrowAccount = useCallback(async (id) => {
     if (!confirm('Are you sure you want to delete this escrow account?')) {
       return
     }
@@ -281,9 +287,10 @@ export default function PaymentAccountsManagement() {
       console.error('Error deleting escrow account:', error)
       alert('Failed to delete escrow account. Please try again.')
     }
-  }
+  }, [supabase, loadSettings])
 
-  const setDefaultAccount = async (id) => {
+  // Memoize setDefaultAccount function
+  const setDefaultAccount = useCallback(async (id) => {
     try {
       // Unset all defaults
       await supabase
@@ -305,9 +312,10 @@ export default function PaymentAccountsManagement() {
       console.error('Error setting default account:', error)
       alert('Failed to set default account. Please try again.')
     }
-  }
+  }, [supabase, loadSettings])
 
-  const testConnection = async (provider) => {
+  // Memoize testConnection function
+  const testConnection = useCallback(async (provider) => {
     try {
       setTestResults({ ...testResults, [provider]: 'testing' })
 
@@ -325,11 +333,12 @@ export default function PaymentAccountsManagement() {
         setTestResults({ ...testResults, [provider]: null })
       }, 5000)
     }
-  }
+  }, [testResults])
 
-  const toggleApiKeyVisibility = (key) => {
+  // Memoize toggleApiKeyVisibility function
+  const toggleApiKeyVisibility = useCallback((key) => {
     setShowApiKeys({ ...showApiKeys, [key]: !showApiKeys[key] })
-  }
+  }, [showApiKeys])
 
   if (loading) {
     return <Loading text="Loading payment settings..." />

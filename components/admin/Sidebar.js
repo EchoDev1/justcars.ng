@@ -32,16 +32,23 @@ export default function Sidebar() {
   const handleLogout = async () => {
     try {
       const supabase = createClient()
-      await supabase.auth.signOut()
 
-      // Clear all storage
+      // Show immediate feedback
       if (typeof window !== 'undefined') {
+        // Clear storage immediately for instant logout feel
         localStorage.clear()
         sessionStorage.clear()
       }
 
-      router.push('/admin/login')
-      router.refresh()
+      // Sign out from Supabase
+      await supabase.auth.signOut()
+
+      // Use window.location for instant redirect (faster than router.push)
+      if (typeof window !== 'undefined') {
+        window.location.href = '/admin/login'
+      } else {
+        router.push('/admin/login')
+      }
     } catch (error) {
       console.error('Logout error:', error)
       // Force logout even if error occurs

@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ClipboardCheck, Calendar, CheckCircle, Clock, AlertCircle, Upload, User, Car } from 'lucide-react'
@@ -14,7 +14,8 @@ import Loading from '@/components/ui/Loading'
 
 export default function AdminInspectionsPage() {
   const router = useRouter()
-  const supabase = createClient()
+  // Memoize Supabase client to prevent recreation on every render
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
   const [inspections, setInspections] = useState([])
   const [filterStatus, setFilterStatus] = useState('all')
@@ -32,11 +33,8 @@ export default function AdminInspectionsPage() {
   const [uploadingReport, setUploadingReport] = useState(false)
   const [uploadedReportUrl, setUploadedReportUrl] = useState('')
 
-  useEffect(() => {
-    loadInspections()
-  }, [])
-
-  const loadInspections = async () => {
+  // Memoize loadInspections function to prevent recreation
+  const loadInspections = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -83,9 +81,14 @@ export default function AdminInspectionsPage() {
       alert('Failed to load inspections. Please try again.')
       setLoading(false)
     }
-  }
+  }, [supabase, router])
 
-  const getStatusInfo = (status) => {
+  useEffect(() => {
+    loadInspections()
+  }, [loadInspections])
+
+  // Memoize getStatusInfo function
+  const getStatusInfo = useCallback((status) => {
     const statusMap = {
       pending: { color: 'blue', label: 'Pending Assignment', icon: Clock },
       scheduled: { color: 'purple', label: 'Scheduled', icon: Calendar },
@@ -94,18 +97,20 @@ export default function AdminInspectionsPage() {
       cancelled: { color: 'red', label: 'Cancelled', icon: AlertCircle }
     }
     return statusMap[status] || statusMap.pending
-  }
+  }, [])
 
-  const calculateStats = () => {
+  // Memoize calculated stats to prevent recalculation on every render
+  const stats = useMemo(() => {
     const pending = inspections.filter(i => i.inspection_status === 'pending').length
     const scheduled = inspections.filter(i => i.inspection_status === 'scheduled').length
     const completed = inspections.filter(i => i.inspection_status === 'completed').length
     const totalRevenue = inspections.filter(i => i.inspection_status === 'completed').reduce((sum, i) => sum + parseFloat(i.inspection_fee || 0), 0)
 
     return { pending, scheduled, completed, totalRevenue }
-  }
+  }, [inspections])
 
-  const handleUpdateInspection = (inspection, action) => {
+  // Memoize handleUpdateInspection function
+  const handleUpdateInspection = useCallback((inspection, action) => {
     setSelectedInspection(inspection)
     setUpdateAction(action)
     setShowUpdateModal(true)
@@ -120,9 +125,10 @@ export default function AdminInspectionsPage() {
       setReportSummary(inspection.report_summary || '')
       setUploadedReportUrl(inspection.report_file_url || '')
     }
-  }
+  }, [])
 
-  const handleReportUpload = async (e) => {
+  // Memoize handleReportUpload function
+  const handleReportUpload = useCallback(async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -150,9 +156,20 @@ export default function AdminInspectionsPage() {
       alert('Failed to upload report. Please try again.')
       setUploadingReport(false)
     }
-  }
+  }, [selectedInspection, supabase])
 
-  const submitUpdate = async () => {
+  // Memoize resetForm function
+  const resetForm = useCallback(() => {
+    setInspectorName('')
+    setInspectorPhone('')
+    setScheduledDate('')
+    setOverallScore('')
+    setReportSummary('')
+    setUploadedReportUrl('')
+  }, [])
+
+  // Memoize submitUpdate function
+  const submitUpdate = useCallback(async () => {
     try {
       setSubmitting(true)
 
@@ -211,26 +228,17 @@ export default function AdminInspectionsPage() {
       alert('Failed to update inspection. Please try again.')
       setSubmitting(false)
     }
-  }
+  }, [supabase, selectedInspection, updateAction, inspectorName, inspectorPhone, scheduledDate, overallScore, reportSummary, uploadedReportUrl, loadInspections, resetForm])
 
-  const resetForm = () => {
-    setInspectorName('')
-    setInspectorPhone('')
-    setScheduledDate('')
-    setOverallScore('')
-    setReportSummary('')
-    setUploadedReportUrl('')
-  }
-
-  const filteredInspections = filterStatus === 'all'
+  // Memoize filtered inspections to prevent recalculation
+  const filteredInspections = useMemo(() => filterStatus === 'all'
     ? inspections
-    : inspections.filter(i => i.inspection_status === filterStatus)
+    : inspections.filter(i => i.inspection_status === filterStatus),
+  [filterStatus, inspections])
 
   if (loading) {
     return <Loading text="Loading inspections..." />
   }
-
-  const stats = calculateStats()
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
