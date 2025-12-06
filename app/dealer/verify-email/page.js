@@ -81,6 +81,10 @@ export default function VerifyEmailPage() {
 
     setLoading(true)
 
+    // CRITICAL FIX: Add timeout for API call
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
     try {
       const supabase = createClient()
 
@@ -88,6 +92,8 @@ export default function VerifyEmailPage() {
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       })
+
+      clearTimeout(timeoutId)
 
       if (updateError) throw updateError
 
@@ -116,7 +122,13 @@ export default function VerifyEmailPage() {
 
     } catch (error) {
       console.error('Password setup error:', error)
-      setError(error.message || 'Failed to set password. Please try again.')
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please try again.')
+      } else {
+        setError(error.message || 'Failed to set password. Please try again.')
+      }
+    } finally {
+      // CRITICAL FIX: Always reset loading state
       setLoading(false)
     }
   }

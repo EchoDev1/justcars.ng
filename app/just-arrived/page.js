@@ -26,43 +26,55 @@ function JustArrivedContent() {
   const fetchJustArrivedCars = useCallback(async () => {
     setLoading(true)
 
-    let query = supabase
-      .from('cars')
-      .select(`
-        id,
-        make,
-        model,
-        year,
-        price,
-        mileage,
-        location,
-        condition,
-        just_arrived_date,
-        created_at,
-        dealers (name, badge_type, is_verified),
-        car_images (image_url, is_primary)
-      `)
-      .eq('is_just_arrived', true)
+    // Create abort controller for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
 
-    // Apply search if provided
-    if (searchTerm) {
-      query = query.or(`make.ilike.%${searchTerm}%,model.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
-    }
+    try {
+      let query = supabase
+        .from('cars')
+        .select(`
+          id,
+          make,
+          model,
+          year,
+          price,
+          mileage,
+          location,
+          condition,
+          just_arrived_date,
+          created_at,
+          dealers (name, badge_type, is_verified),
+          car_images (image_url, is_primary)
+        `)
+        .eq('is_just_arrived', true)
 
-    // Order by just_arrived_date descending (newest first)
-    query = query.order('just_arrived_date', { ascending: false })
+      // Apply search if provided
+      if (searchTerm) {
+        query = query.or(`make.ilike.%${searchTerm}%,model.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
+      }
 
-    const { data, error } = await query
+      // Order by just_arrived_date descending (newest first)
+      query = query.order('just_arrived_date', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching just arrived cars:', error)
+      const { data, error } = await query
+
+      clearTimeout(timeoutId)
+
+      if (error) {
+        console.error('Error fetching just arrived cars:', error)
+        setCars([])
+        return
+      }
+
+      setCars(data || [])
+    } catch (err) {
+      console.error('Fatal error fetching just arrived cars:', err)
       setCars([])
+    } finally {
+      // CRITICAL: Always reset loading state
       setLoading(false)
-      return
     }
-
-    setCars(data || [])
-    setLoading(false)
   }, [searchTerm, supabase])
 
   useEffect(() => {

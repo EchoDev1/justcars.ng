@@ -61,6 +61,10 @@ function SetupPasswordForm() {
     setError('')
     setLoading(true)
 
+    // Add timeout for API call
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
     try {
       // Validation
       if (password !== confirmPassword) {
@@ -83,7 +87,10 @@ function SetupPasswordForm() {
           password,
           confirmPassword
         }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       const data = await response.json()
 
@@ -100,7 +107,12 @@ function SetupPasswordForm() {
 
     } catch (error) {
       console.error('Password setup error:', error)
-      setError(error.message || 'An unexpected error occurred')
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please try again.')
+      } else {
+        setError(error.message || 'An unexpected error occurred')
+      }
     } finally {
       setLoading(false)
     }

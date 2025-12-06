@@ -25,9 +25,13 @@ export default function DealerEscrowTransactionsPage() {
   }, [])
 
   const loadTransactions = async () => {
-    try {
-      setLoading(true)
+    setLoading(true)
 
+    // Add timeout for API call
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+    try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -75,13 +79,21 @@ export default function DealerEscrowTransactionsPage() {
         .eq('dealer_id', user.id)
         .order('created_at', { ascending: false })
 
+      clearTimeout(timeoutId)
+
       if (error) throw error
 
       setTransactions(transactionsData || [])
-      setLoading(false)
     } catch (error) {
+      clearTimeout(timeoutId)
       console.error('Error loading transactions:', error)
-      alert('Failed to load transactions. Please try again.')
+      if (error.name === 'AbortError') {
+        alert('Request timed out. Please try again.')
+      } else {
+        alert('Failed to load transactions. Please try again.')
+      }
+    } finally {
+      // CRITICAL FIX: Always reset loading state
       setLoading(false)
     }
   }
