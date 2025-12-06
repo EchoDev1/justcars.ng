@@ -9,9 +9,15 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  console.log('🔵 [DEALERS LIST] Request received')
+
   try {
     // Use service role to bypass RLS and get all dealers
+    console.log('🔑 [DEALERS LIST] Using service role client')
+
     const supabase = createServiceRoleClient()
+
+    console.log('🔍 [DEALERS LIST] Querying dealers...')
 
     const { data: dealers, error } = await supabase
       .from('dealers')

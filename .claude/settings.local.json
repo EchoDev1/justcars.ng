@@ -50,7 +50,8 @@
       "Bash(\"C:\\Users\\hp\\OneDrive\\Pictures\\Echo\\201401__\\OneDrive\\Echo\\leanring folder\\Justcars.ng\\app\\globals.css\")",
       "Bash(exit 0)",
       "Bash(del /Q \"C:\\Users\\hp\\OneDrive\\Pictures\\Echo\\201401__\\OneDrive\\Echo\\leanring folder\\Justcars.ng\\.next\\dev\\lock\" 2)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

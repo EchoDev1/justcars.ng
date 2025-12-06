@@ -12,13 +12,20 @@ export const revalidate = 60
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
+  console.log('🔵 [LATEST CARS] Request received')
+
   try {
     // CRITICAL FIX: Use service role client to bypass RLS and avoid infinite recursion
+    console.log('🔑 [LATEST CARS] Using service role client')
     const supabase = createServiceRoleClient()
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '5')
 
+    console.log('📝 [LATEST CARS] Query parameters - limit:', limit)
+
+
     // Optimized query - only select necessary fields
+    console.log('🔍 [LATEST CARS] Querying just arrived cars...')
     const { data: cars, error } = await supabase
       .from('cars')
       .select(`

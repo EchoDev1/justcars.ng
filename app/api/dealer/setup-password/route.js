@@ -9,12 +9,19 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request) {
+  console.log('🔵 [DEALER SETUP PASSWORD] Request received')
+
   try {
     const body = await request.json()
     const { email, setupToken, password, confirmPassword } = body
 
+    console.log('📝 [DEALER SETUP PASSWORD] Email:', email)
+    console.log('📝 [DEALER SETUP PASSWORD] Setup token present:', !!setupToken)
+
+
     // Validation
     if (!email || !setupToken || !password || !confirmPassword) {
+      console.log('❌ [DEALER SETUP PASSWORD] Validation failed: Missing required fields')
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -23,6 +30,7 @@ export async function POST(request) {
 
     // Password validation
     if (password !== confirmPassword) {
+      console.log('❌ [DEALER SETUP PASSWORD] Passwords do not match')
       return NextResponse.json(
         { error: 'Passwords do not match' },
         { status: 400 }
@@ -30,19 +38,25 @@ export async function POST(request) {
     }
 
     if (password.length < 8) {
+      console.log('❌ [DEALER SETUP PASSWORD] Password too short')
       return NextResponse.json(
         { error: 'Password must be at least 8 characters long' },
         { status: 400 }
       )
     }
 
+        console.log('🔍 [DEALER SETUP PASSWORD] Checking password strength...')
     // Password strength check (optional but recommended)
     const hasUpperCase = /[A-Z]/.test(password)
     const hasLowerCase = /[a-z]/.test(password)
     const hasNumber = /\d/.test(password)
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
 
+    console.log('✅ [DEALER SETUP PASSWORD] Password validation passed')
+
+
     if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      console.log('❌ [DEALER SETUP PASSWORD] Password strength check failed')
       return NextResponse.json(
         {
           error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
@@ -52,9 +66,11 @@ export async function POST(request) {
     }
 
     // CRITICAL: Use service role client to bypass RLS
+    console.log('🔑 [DEALER SETUP PASSWORD] Using service role client')
     const supabase = createServiceRoleClient()
 
     // Get dealer by email and setup token
+    console.log('🔍 [DEALER SETUP PASSWORD] Querying dealer by email and token...')
     const { data: dealer, error: dealerError } = await supabase
       .from('dealers')
       .select('*')
@@ -63,6 +79,7 @@ export async function POST(request) {
       .maybeSingle()
 
     if (dealerError || !dealer) {
+      console.log('❌ [DEALER SETUP PASSWORD] Dealer not found or invalid token')
       return NextResponse.json(
         { error: 'Invalid setup link or token has expired' },
         { status: 404 }
@@ -71,6 +88,7 @@ export async function POST(request) {
 
     // Check if dealer is verified
     if (dealer.status !== 'verified') {
+      console.log('❌ [DEALER SETUP PASSWORD] Dealer status is not verified:', dealer.status)
       return NextResponse.json(
         {
           error: 'Account must be verified before setting up password',
@@ -82,6 +100,7 @@ export async function POST(request) {
 
     // Check if token has expired
     if (dealer.setup_token_expires_at && new Date(dealer.setup_token_expires_at) < new Date()) {
+      console.log('❌ [DEALER SETUP PASSWORD] Setup token expired:', dealer.setup_token_expires_at)
       return NextResponse.json(
         { error: 'Setup token has expired. Please contact admin for a new setup link' },
         { status: 410 }
@@ -90,6 +109,7 @@ export async function POST(request) {
 
     // Check if password already set
     if (dealer.password_hash && dealer.status === 'active') {
+      console.log('❌ [DEALER SETUP PASSWORD] Password already set')
       return NextResponse.json(
         { error: 'Password has already been set. Please use the login page' },
         { status: 400 }
@@ -97,10 +117,14 @@ export async function POST(request) {
     }
 
     // Hash password
+    console.log('🔑 [DEALER SETUP PASSWORD] Hashing password...')
     const salt = await bcrypt.genSalt(10)
     const passwordHash = await bcrypt.hash(password, salt)
+    console.log('✅ [DEALER SETUP PASSWORD] Password hashed successfully')
+
 
     // Update dealer with password and activate account
+    console.log('💾 [DEALER SETUP PASSWORD] Updating dealer account and activating...')
     const { error: updateError } = await supabase
       .from('dealers')
       .update({
@@ -121,6 +145,7 @@ export async function POST(request) {
     }
 
     // Log password setup
+    console.log('📝 [DEALER SETUP PASSWORD] Logging password setup event...')
     await supabase
       .from('dealer_auth_logs')
       .insert([

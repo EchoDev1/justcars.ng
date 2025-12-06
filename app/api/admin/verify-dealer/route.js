@@ -14,12 +14,19 @@ function generateSetupToken() {
 }
 
 export async function POST(request) {
+  console.log('🔵 [VERIFY DEALER] Request received')
+
   try {
     const body = await request.json()
     const { dealerId, notes } = body
 
+    console.log('📝 [VERIFY DEALER] Dealer ID:', dealerId)
+    console.log('📝 [VERIFY DEALER] Notes:', notes || 'None')
+
+
     // Validation
     if (!dealerId) {
+      console.log('❌ [VERIFY DEALER] Validation failed: Missing dealer ID')
       return NextResponse.json(
         { error: 'Dealer ID is required' },
         { status: 400 }
@@ -28,10 +35,13 @@ export async function POST(request) {
 
     const supabase = await createClient()
 
+    console.log('🔑 [VERIFY DEALER] Checking admin authentication...')
+
     // Check if admin is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.log('❌ [VERIFY DEALER] Authentication failed:', authError?.message)
       return NextResponse.json(
         { error: 'Unauthorized - Admin authentication required' },
         { status: 401 }
@@ -39,6 +49,8 @@ export async function POST(request) {
     }
 
     // Get admin record
+    console.log('🔍 [VERIFY DEALER] Fetching admin record...')
+    
     const { data: admin, error: adminError } = await supabase
       .from('admins')
       .select('id')
@@ -46,6 +58,7 @@ export async function POST(request) {
       .maybeSingle()
 
     if (adminError || !admin) {
+      console.log('❌ [VERIFY DEALER] Admin account not found:', adminError?.message)
       return NextResponse.json(
         { error: 'Admin account not found' },
         { status: 403 }
@@ -53,6 +66,8 @@ export async function POST(request) {
     }
 
     // Get dealer
+    console.log('🔍 [VERIFY DEALER] Fetching dealer...')
+    
     const { data: dealer, error: dealerError } = await supabase
       .from('dealers')
       .select('*')
@@ -60,6 +75,7 @@ export async function POST(request) {
       .maybeSingle()
 
     if (dealerError || !dealer) {
+      console.log('❌ [VERIFY DEALER] Dealer not found:', dealerError?.message)
       return NextResponse.json(
         { error: 'Dealer not found' },
         { status: 404 }
@@ -68,6 +84,7 @@ export async function POST(request) {
 
     // Check if dealer is already verified or active
     if (dealer.status === 'verified' || dealer.status === 'active') {
+      console.log('❌ [VERIFY DEALER] Dealer already verified or active:', dealer.status)
       return NextResponse.json(
         { error: 'Dealer is already verified' },
         { status: 400 }
@@ -75,10 +92,16 @@ export async function POST(request) {
     }
 
     // Generate setup token for password creation
+    console.log('🔑 [VERIFY DEALER] Generating setup token...')
+    
     const setupToken = generateSetupToken()
     const setupTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    console.log('✅ [VERIFY DEALER] Setup token generated (expires in 7 days)')
+
 
     // Update dealer status to verified and generate setup token
+    console.log('💾 [VERIFY DEALER] Updating dealer status to verified...')
+    
     const { error: updateError } = await supabase
       .from('dealers')
       .update({
@@ -101,6 +124,8 @@ export async function POST(request) {
     }
 
     // Log the verification
+    console.log('📝 [VERIFY DEALER] Logging verification event...')
+    
     await supabase
       .from('dealer_auth_logs')
       .insert([
@@ -115,8 +140,12 @@ export async function POST(request) {
       ])
 
     // Generate setup link
+    console.log('🔗 [VERIFY DEALER] Generating setup link...')
+    
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     const setupLink = `${baseUrl}/dealer/setup?email=${encodeURIComponent(dealer.email)}&token=${setupToken}`
+    console.log('✅ [VERIFY DEALER] Setup link generated')
+
 
     return NextResponse.json(
       {

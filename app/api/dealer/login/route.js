@@ -15,12 +15,17 @@ function generateSessionToken() {
 }
 
 export async function POST(request) {
+  console.log('🔵 [DEALER LOGIN] Request received')
+
   try {
     const body = await request.json()
     const { email, password } = body
 
+    console.log('📝 [DEALER LOGIN] Login attempt for email:', email)
+
     // Validation
     if (!email || !password) {
+      console.log('❌ [DEALER LOGIN] Validation failed: Missing email or password')
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -29,8 +34,10 @@ export async function POST(request) {
 
     // CRITICAL: Use service role client to bypass RLS
     const supabase = createServiceRoleClient()
+    console.log('🔑 [DEALER LOGIN] Using service role client')
 
     // Get dealer by email
+    console.log('🔍 [DEALER LOGIN] Fetching dealer from database...')
     const { data: dealer, error: dealerError } = await supabase
       .from('dealers')
       .select('*')
@@ -38,7 +45,9 @@ export async function POST(request) {
       .maybeSingle()
 
     if (dealerError || !dealer) {
+      console.log('❌ [DEALER LOGIN] Dealer not found:', email)
       // Log failed attempt
+      console.log('📝 [DEALER LOGIN] Logging failed login attempt')
       await supabase
         .from('dealer_auth_logs')
         .insert([
@@ -58,8 +67,11 @@ export async function POST(request) {
       )
     }
 
+        console.log('✅ [DEALER LOGIN] Dealer found:', { id: dealer.id, email: dealer.email, status: dealer.status })
+
     // Check if account is locked
     if (dealer.locked_until && new Date(dealer.locked_until) > new Date()) {
+      console.log('❌ [DEALER LOGIN] Account locked until:', dealer.locked_until)
       return NextResponse.json(
         {
           error: 'Account is temporarily locked due to multiple failed login attempts',
@@ -70,7 +82,10 @@ export async function POST(request) {
     }
 
     // Check dealer status
+    console.log('🔍 [DEALER LOGIN] Checking dealer status:', dealer.status)
+
     if (dealer.status === 'pending') {
+      console.log('❌ [DEALER LOGIN] Status pending - awaiting admin verification')
       return NextResponse.json(
         {
           error: 'Your account is pending verification by our admin team',
@@ -81,6 +96,7 @@ export async function POST(request) {
     }
 
     if (dealer.status === 'verified') {
+      console.log('❌ [DEALER LOGIN] Status verified - needs password setup')
       return NextResponse.json(
         {
           error: 'Please set up your password first',
@@ -93,6 +109,7 @@ export async function POST(request) {
     }
 
     if (dealer.status === 'suspended') {
+      console.log('❌ [DEALER LOGIN] Account suspended')
       return NextResponse.json(
         {
           error: 'Your account has been suspended. Please contact support',
@@ -104,6 +121,7 @@ export async function POST(request) {
 
     // Check if password is set
     if (!dealer.password_hash) {
+      console.log('❌ [DEALER LOGIN] No password hash found')
       return NextResponse.json(
         {
           error: 'Password not set. Please complete your account setup',
@@ -114,17 +132,23 @@ export async function POST(request) {
     }
 
     // Verify password
+    console.log('🔑 [DEALER LOGIN] Verifying password...')
     const passwordMatch = await bcrypt.compare(password, dealer.password_hash)
 
     if (!passwordMatch) {
+      console.log('❌ [DEALER LOGIN] Password mismatch')
+
       // Increment login attempts
       const newLoginAttempts = (dealer.login_attempts || 0) + 1
+      console.log('📝 [DEALER LOGIN] Login attempt count:', newLoginAttempts)
+
       const updateData = {
         login_attempts: newLoginAttempts
       }
 
       // Lock account after 5 failed attempts
       if (newLoginAttempts >= 5) {
+        console.log('🔒 [DEALER LOGIN] Locking account after 5 failed attempts')
         updateData.locked_until = new Date(Date.now() + 30 * 60 * 1000).toISOString() // Lock for 30 minutes
 
         await supabase
@@ -171,7 +195,10 @@ export async function POST(request) {
       )
     }
 
+        console.log('✅ [DEALER LOGIN] Password verified successfully')
+
     // Successful login - create session
+    console.log('🔑 [DEALER LOGIN] Creating session...')
     const sessionToken = generateSessionToken()
     const refreshToken = generateSessionToken()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
@@ -200,6 +227,7 @@ export async function POST(request) {
     }
 
     // Reset login attempts and update last login
+    console.log('💾 [DEALER LOGIN] Resetting login attempts and updating last login...')
     await supabase
       .from('dealers')
       .update({
@@ -210,6 +238,7 @@ export async function POST(request) {
       .eq('id', dealer.id)
 
     // Log successful login
+    console.log('📝 [DEALER LOGIN] Logging successful login')
     await supabase
       .from('dealer_auth_logs')
       .insert([
@@ -224,6 +253,7 @@ export async function POST(request) {
       ])
 
     // Create response with session cookie
+    console.log('🎉 [DEALER LOGIN] Login successful, creating response')
     const response = NextResponse.json(
       {
         success: true,
@@ -242,6 +272,7 @@ export async function POST(request) {
     )
 
     // Set session cookie
+    console.log('🍪 [DEALER LOGIN] Setting session cookie')
     response.cookies.set('dealer_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

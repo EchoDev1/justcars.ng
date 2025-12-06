@@ -8,12 +8,19 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST(request) {
+  console.log('🔵 [APPROVE DEALER] Request received')
+
   try {
     const body = await request.json()
     const { dealerId, notes } = body
 
+    console.log('📝 [APPROVE DEALER] Dealer ID:', dealerId)
+    console.log('📝 [APPROVE DEALER] Notes:', notes || 'None')
+
+
     // Validation
     if (!dealerId) {
+      console.log('❌ [APPROVE DEALER] Validation failed: Missing dealer ID')
       return NextResponse.json(
         { error: 'Dealer ID is required' },
         { status: 400 }
@@ -21,12 +28,15 @@ export async function POST(request) {
     }
 
     // Use regular client for auth check
+    console.log('🔑 [APPROVE DEALER] Checking admin authentication...')
+    
     const supabase = await createClient()
 
     // Check if admin is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.log('❌ [APPROVE DEALER] Authentication failed:', authError?.message)
       return NextResponse.json(
         { error: 'Unauthorized - Admin authentication required' },
         { status: 401 }
@@ -34,7 +44,11 @@ export async function POST(request) {
     }
 
     // CRITICAL: Use service role client to get admin record (bypass RLS)
+    console.log('🔑 [APPROVE DEALER] Using service role client')
+    
     const serviceSupabase = createServiceRoleClient()
+
+    console.log('🔍 [APPROVE DEALER] Fetching admin record...')
 
     let { data: admin, error: adminError } = await serviceSupabase
       .from('admins')
@@ -51,6 +65,8 @@ export async function POST(request) {
     }
 
     if (!admin) {
+      console.log('📝 [APPROVE DEALER] No admin record found, creating one for user:', user.id)
+
       // No admin record found - create one automatically for logged-in admin
       console.log('No admin record found, creating one for user:', user.id)
 
@@ -77,10 +93,13 @@ export async function POST(request) {
       }
 
       admin = newAdmin
+      console.log('✅ [APPROVE DEALER] Admin record created successfully:', admin.id)
       console.log('Admin record created successfully:', admin.id)
     }
 
     // Get dealer (already using service role client from above)
+    console.log('🔍 [APPROVE DEALER] Fetching dealer...')
+    
     const { data: dealer, error: dealerError } = await serviceSupabase
       .from('dealers')
       .select('*')
@@ -97,6 +116,7 @@ export async function POST(request) {
 
     // Check if dealer is pending
     if (dealer.status !== 'pending') {
+      console.log('❌ [APPROVE DEALER] Dealer status is not pending:', dealer.status)
       return NextResponse.json(
         { error: `Dealer status is already '${dealer.status}'. Only pending dealers can be approved.` },
         { status: 400 }
@@ -105,6 +125,7 @@ export async function POST(request) {
 
     // Check if dealer has password set
     if (!dealer.password_hash) {
+      console.log('❌ [APPROVE DEALER] Dealer has no password set')
       return NextResponse.json(
         { error: 'Dealer has not completed registration (no password set)' },
         { status: 400 }
@@ -112,6 +133,8 @@ export async function POST(request) {
     }
 
     // Approve dealer - change status to active (use service role client)
+    console.log('💾 [APPROVE DEALER] Updating dealer status to active...')
+    
     const { error: updateError } = await serviceSupabase
       .from('dealers')
       .update({
@@ -132,6 +155,8 @@ export async function POST(request) {
     }
 
     // Log the approval (use service role client)
+    console.log('📝 [APPROVE DEALER] Logging approval event...')
+    
     await serviceSupabase
       .from('dealer_auth_logs')
       .insert([

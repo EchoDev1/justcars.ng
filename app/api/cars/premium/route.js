@@ -12,13 +12,20 @@ export const revalidate = 60
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
+  console.log('🔵 [PREMIUM CARS] Request received')
+
   try {
     // CRITICAL FIX: Use service role client to bypass RLS and avoid infinite recursion
+    console.log('🔑 [PREMIUM CARS] Using service role client')
     const supabase = createServiceRoleClient()
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '6')
 
+    console.log('📝 [PREMIUM CARS] Query parameters - limit:', limit)
+
+
     // OPTIMIZED: Get premium verified cars (simpler, faster query)
+    console.log('🔍 [PREMIUM CARS] Querying premium verified cars...')
     const { data: cars, error } = await supabase
       .from('cars')
       .select(`
@@ -54,7 +61,10 @@ export async function GET(request) {
       .order('created_at', { ascending: false })
       .limit(limit)
 
-    if (error) {
+    if (error)
+
+    console.log('✅ [PREMIUM CARS] Query successful - cars found:', cars?.length || 0)
+ {
       console.error('Error fetching premium cars:', error)
       return NextResponse.json(
         { cars: [] },
