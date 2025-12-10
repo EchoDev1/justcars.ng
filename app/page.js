@@ -227,14 +227,14 @@ export default function HomePage() {
     const fetchPremiumCars = async () => {
       try {
         setLoadingFeatured(true)
-        const response = await fetch('/api/cars/premium?limit=6')
+        const response = await fetch('/api/cars/premium?limit=12')
         const data = await response.json()
 
-        // Only show real premium cars when we have 6 or more
-        if (data.cars && data.cars.length >= 6) {
+        // Always show real premium cars if available
+        if (data.cars && data.cars.length > 0) {
           setFeaturedCars(data.cars)
         } else {
-          // Show sample/dummy data if less than 6 premium cars
+          // Show sample/dummy data only if NO premium cars available
           setFeaturedCars(sampleFeaturedCars)
         }
       } catch (error) {
@@ -255,17 +255,16 @@ export default function HomePage() {
     const fetchLatestCars = async () => {
       try {
         setLoadingLatest(true)
-        // Fetch 6 cars to check if there are more than 5
-        const response = await fetch('/api/cars/latest?limit=6')
+        // Fetch up to 10 cars for the homepage
+        const response = await fetch('/api/cars/latest?limit=10')
         const data = await response.json()
 
         if (data.cars && data.cars.length > 0) {
-          // Store total count
+          // Store total count and show all retrieved cars
           setTotalJustArrivedCount(data.cars.length)
-          // Only show first 5 on homepage
-          setLatestArrivals(data.cars.slice(0, 5))
+          setLatestArrivals(data.cars)
         } else {
-          // Fallback to sample data if no latest cars available
+          // Fallback to sample data only if NO latest cars available
           setLatestArrivals(sampleLatestArrivals)
           setTotalJustArrivedCount(0)
         }
@@ -1143,8 +1142,8 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* View All Recent Arrivals Button - Only show if more than 5 cars */}
-          {totalJustArrivedCount > 5 && (
+          {/* View All Recent Arrivals Button - Show when there are cars */}
+          {totalJustArrivedCount > 0 && (
             <div className="text-center mt-16">
               <Link href="/just-arrived">
                 <button className="view-all-button">
