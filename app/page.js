@@ -24,19 +24,21 @@ const Testimonials = dynamic(() => import('@/components/ui/Testimonials'), {
   ssr: false
 })
 
+const JustArrivedSection = dynamic(() => import('@/components/homepage/JustArrivedSection'), {
+  loading: () => <div className="h-96 bg-gray-800/50 animate-pulse rounded-lg" />,
+  ssr: false
+})
+
 export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState(null)
   const [trustCardsVisible, setTrustCardsVisible] = useState([false, false, false, false])
-  const [timelineItemsVisible, setTimelineItemsVisible] = useState([false, false, false, false, false])
   const [stepCardsVisible, setStepCardsVisible] = useState([false, false, false])
   const [progressLineVisible, setProgressLineVisible] = useState(false)
   const [testimonialsVisible, setTestimonialsVisible] = useState([false, false, false])
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [featuredCars, setFeaturedCars] = useState([])
-  const [latestArrivals, setLatestArrivals] = useState([])
   const [loadingFeatured, setLoadingFeatured] = useState(true)
-  const [loadingLatest, setLoadingLatest] = useState(true)
 
   // Fixed particles to prevent hydration mismatch
   // Using fixed values instead of Math.random() to ensure server and client match
@@ -249,38 +251,6 @@ export default function HomePage() {
     fetchPremiumCars()
   }, [])
 
-  // Fetch Latest Arrivals
-  const [totalJustArrivedCount, setTotalJustArrivedCount] = useState(0)
-  useEffect(() => {
-    const fetchLatestCars = async () => {
-      try {
-        setLoadingLatest(true)
-        // Fetch up to 10 cars for the homepage
-        const response = await fetch('/api/cars/latest?limit=10')
-        const data = await response.json()
-
-        if (data.cars && data.cars.length > 0) {
-          // Store total count and show all retrieved cars
-          setTotalJustArrivedCount(data.cars.length)
-          setLatestArrivals(data.cars)
-        } else {
-          // Fallback to sample data only if NO latest cars available
-          setLatestArrivals(sampleLatestArrivals)
-          setTotalJustArrivedCount(0)
-        }
-      } catch (error) {
-        console.error('Error fetching latest cars:', error)
-        // Fallback to sample data on error
-        setLatestArrivals(sampleLatestArrivals)
-        setTotalJustArrivedCount(0)
-      } finally {
-        setLoadingLatest(false)
-      }
-    }
-
-    fetchLatestCars()
-  }, [])
-
   // Sample featured cars data (fallback)
   const sampleFeaturedCars = [
     {
@@ -468,54 +438,6 @@ export default function HomePage() {
     { name: 'Ford', count: 167, logo: 'F' }
   ]
 
-  // Latest arrivals data (fallback)
-  const sampleLatestArrivals = [
-    {
-      id: 1,
-      make: 'Porsche',
-      model: '911 Carrera',
-      year: 2023,
-      price: 89000000,
-      addedAgo: '2 hours ago',
-      image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=200'
-    },
-    {
-      id: 2,
-      make: 'Tesla',
-      model: 'Model S Plaid',
-      year: 2024,
-      price: 95000000,
-      addedAgo: '5 hours ago',
-      image: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=200'
-    },
-    {
-      id: 3,
-      make: 'Land Rover',
-      model: 'Defender 110',
-      year: 2023,
-      price: 72000000,
-      addedAgo: '8 hours ago',
-      image: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=200'
-    },
-    {
-      id: 4,
-      make: 'Audi',
-      model: 'RS7 Sportback',
-      year: 2023,
-      price: 85000000,
-      addedAgo: '1 day ago',
-      image: 'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=200'
-    },
-    {
-      id: 5,
-      make: 'Jaguar',
-      model: 'F-Type R',
-      year: 2022,
-      price: 68000000,
-      addedAgo: '1 day ago',
-      image: 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?w=200'
-    }
-  ]
 
   // Format price helper
   const formatPrice = (price) => {
@@ -1067,94 +989,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Latest Arrivals - Timeline */}
-      <section className="py-24 relative overflow-hidden" style={{ backgroundColor: 'var(--primary-light)' }}>
-        <div className="hero-gradient-mesh absolute inset-0 opacity-15" />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Title with NEW Badge */}
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-4 flex-wrap justify-center mb-4">
-              <h2 className="text-4xl md:text-6xl font-bold gradient-text-hero">
-                Just Arrived
-              </h2>
-              <span className="new-badge">NEW</span>
-            </div>
-            <p className="text-muted text-lg max-w-2xl mx-auto">
-              Fresh arrivals updated daily. Be the first to discover these premium vehicles.
-            </p>
-          </div>
-
-          {/* Timeline Container */}
-          <div className="timeline-container">
-            {/* Vertical Timeline Line */}
-            <div className="timeline-line" />
-
-            {/* Timeline Items */}
-            {latestArrivals.map((car, index) => (
-              <div
-                key={car.id}
-                data-timeline-index={index}
-                className={`timeline-item ${index % 2 === 0 ? 'timeline-left' : 'timeline-right'} ${timelineItemsVisible[index] ? 'visible' : ''}`}
-              >
-                {/* Timeline Node (Glowing Dot) */}
-                <div className="timeline-node">
-                  <Zap size={16} className="text-accent-blue" />
-                </div>
-
-                {/* Timeline Card */}
-                <div className="timeline-card">
-                  {/* Date Badge */}
-                  <div className="timeline-date-badge">
-                    {car.addedAgo || getTimeAgo(car.created_at)}
-                  </div>
-
-                  {/* Mini Car Card */}
-                  <Link href={`/cars/${car.id}`}>
-                    <div className="timeline-mini-car-card">
-                      {/* Car Image */}
-                      <div className="timeline-car-image-wrapper">
-                        <img
-                          src={car.image || getPrimaryImage(car)}
-                          alt={`${car.make} ${car.model}`}
-                          className="timeline-car-image"
-                        />
-                        <div className="timeline-image-overlay" />
-                      </div>
-
-                      {/* Car Details */}
-                      <div className="timeline-car-details">
-                        <h3 className="timeline-car-name">
-                          {car.year} {car.make} {car.model}
-                        </h3>
-                        <div className="timeline-car-price">
-                          {formatPrice(car.price)}
-                        </div>
-                        <div className="timeline-view-details">
-                          View Details
-                          <ArrowRight size={16} />
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* View All Recent Arrivals Button - Show when there are cars */}
-          {totalJustArrivedCount > 0 && (
-            <div className="text-center mt-16">
-              <Link href="/just-arrived">
-                <button className="view-all-button">
-                  View All New Arrivals
-                  <ChevronRight size={20} />
-                </button>
-              </Link>
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Just Arrived Section - New Functional Component */}
+      <JustArrivedSection />
 
       {/* How It Works Section */}
       <section className="py-24 relative overflow-hidden bg-primary">
