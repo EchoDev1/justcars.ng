@@ -106,44 +106,39 @@ export default function EditCarPage() {
 
       if (carError) throw carError
 
-      // 2. Delete removed images
-      if (deletedImageIds && deletedImageIds.length > 0) {
-        for (const imageId of deletedImageIds) {
-          // Delete from database
-          await supabase
-            .from('car_images')
-            .delete()
-            .eq('id', imageId)
-        }
+      // 2. Delete removed images in parallel (FASTER!)
+      const imageDeletionPromises = (deletedImageIds && deletedImageIds.length > 0)
+        ? deletedImageIds.map(imageId =>
+            supabase
+              .from('car_images')
+              .delete()
+              .eq('id', imageId)
+          )
+        : []
+
+      // Wait for all deletions to complete
+      if (imageDeletionPromises.length > 0) {
+        await Promise.all(imageDeletionPromises)
       }
 
-      // 3. Upload new images
-      if (images.length > 0) {
-        const existingImagesCount = car.car_images?.length || 0
-
-        for (let i = 0; i < images.length; i++) {
-          const image = images[i]
-
-          // Skip if this is an existing image (has an id)
-          if (image.id) continue
-
+      // 3. Upload new images in parallel (MUCH FASTER!)
+      const existingImagesCount = car.car_images?.length || 0
+      const newImageUploadPromises = images
+        .filter(image => !image.id) // Only new images (no existing id)
+        .map(async (image, i) => {
           const fileExt = image.file.name.split('.').pop()
           const fileName = `${carId}/${Date.now()}_${i}.${fileExt}`
 
-          // Upload to storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('car-images')
             .upload(fileName, image.file)
-
           if (uploadError) throw uploadError
 
-          // Get public URL
           const { data: { publicUrl } } = supabase.storage
             .from('car-images')
             .getPublicUrl(fileName)
 
-          // Insert image record
-          await supabase
+          const { error: insertError } = await supabase
             .from('car_images')
             .insert([{
               car_id: carId,
@@ -151,11 +146,12 @@ export default function EditCarPage() {
               is_primary: image.is_primary,
               display_order: existingImagesCount + i
             }])
-        }
-      }
+          if (insertError) throw insertError
+          return publicUrl
+        })
 
-      // 4. Upload video if new one exists
-      if (videoFile) {
+      // 4. Upload video in parallel with images (if new one exists)
+      const videoUploadPromise = videoFile ? (async () => {
         // Delete old video if exists
         if (car.car_videos && car.car_videos.length > 0) {
           await supabase
@@ -167,23 +163,27 @@ export default function EditCarPage() {
         const fileExt = videoFile.name.split('.').pop()
         const fileName = `${carId}/video_${Date.now()}.${fileExt}`
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('car-videos')
           .upload(fileName, videoFile)
-
         if (uploadError) throw uploadError
 
         const { data: { publicUrl } } = supabase.storage
           .from('car-videos')
           .getPublicUrl(fileName)
 
-        await supabase
+        const { error: insertError } = await supabase
           .from('car_videos')
           .insert([{
             car_id: carId,
             video_url: publicUrl
           }])
-      }
+        if (insertError) throw insertError
+        return publicUrl
+      })() : Promise.resolve(null)
+
+      // Wait for all uploads to complete in parallel
+      await Promise.all([...newImageUploadPromises, videoUploadPromise])
 
       // Success notification with details
       const carType = []

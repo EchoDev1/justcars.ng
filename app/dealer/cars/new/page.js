@@ -90,59 +90,58 @@ export default function DealerNewCarPage() {
 
       if (carError) throw carError
 
-      // 2. Upload images
-      if (images.length > 0) {
-        for (let i = 0; i < images.length; i++) {
-          const image = images[i]
-          const fileExt = image.file.name.split('.').pop()
-          const fileName = `${car.id}/${Date.now()}_${i}.${fileExt}`
+      // 2. Upload images in parallel (MUCH FASTER!)
+      const imageUploadPromises = images.map(async (image, i) => {
+        const fileExt = image.file.name.split('.').pop()
+        const fileName = `${car.id}/${Date.now()}_${i}.${fileExt}`
 
-          // Upload to storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('car-images')
-            .upload(fileName, image.file)
+        const { error: uploadError } = await supabase.storage
+          .from('car-images')
+          .upload(fileName, image.file)
+        if (uploadError) throw uploadError
 
-          if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage
+          .from('car-images')
+          .getPublicUrl(fileName)
 
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('car-images')
-            .getPublicUrl(fileName)
+        const { error: insertError } = await supabase
+          .from('car_images')
+          .insert([{
+            car_id: car.id,
+            image_url: publicUrl,
+            is_primary: image.is_primary,
+            display_order: i
+          }])
+        if (insertError) throw insertError
+        return publicUrl
+      })
 
-          // Insert image record
-          await supabase
-            .from('car_images')
-            .insert([{
-              car_id: car.id,
-              image_url: publicUrl,
-              is_primary: image.is_primary,
-              display_order: i
-            }])
-        }
-      }
-
-      // 3. Upload video if exists
-      if (videoFile) {
+      // 3. Upload video in parallel with images (if exists)
+      const videoUploadPromise = videoFile ? (async () => {
         const fileExt = videoFile.name.split('.').pop()
         const fileName = `${car.id}/video_${Date.now()}.${fileExt}`
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('car-videos')
           .upload(fileName, videoFile)
-
         if (uploadError) throw uploadError
 
         const { data: { publicUrl } } = supabase.storage
           .from('car-videos')
           .getPublicUrl(fileName)
 
-        await supabase
+        const { error: insertError } = await supabase
           .from('car_videos')
           .insert([{
             car_id: car.id,
             video_url: publicUrl
           }])
-      }
+        if (insertError) throw insertError
+        return publicUrl
+      })() : Promise.resolve(null)
+
+      // Wait for all uploads to complete in parallel
+      await Promise.all([...imageUploadPromises, videoUploadPromise])
 
       // Success notification with details
       const carType = []
