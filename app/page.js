@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useMemo, memo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Search, Car as CarIcon, CheckCircle, Shield, Clock, TrendingUp, Award, Sparkles, ChevronRight, Star, Camera, Clipboard, Tag, ArrowRight, Zap, Filter, Eye, Phone, Send, ChevronUp } from 'lucide-react'
 import AnimatedCounter from '@/components/ui/AnimatedCounter'
@@ -30,6 +31,7 @@ const JustArrivedSection = dynamic(() => import('@/components/homepage/JustArriv
 })
 
 export default function HomePage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState(null)
   const [trustCardsVisible, setTrustCardsVisible] = useState([false, false, false, false])
@@ -39,6 +41,28 @@ export default function HomePage() {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [featuredCars, setFeaturedCars] = useState([])
   const [loadingFeatured, setLoadingFeatured] = useState(true)
+
+  // Handle search submission
+  const handleSearch = (e) => {
+    e?.preventDefault()
+    if (searchTerm.trim() || activeFilter) {
+      const params = new URLSearchParams()
+      if (searchTerm.trim()) params.set('search', searchTerm.trim())
+      if (activeFilter) params.set('filter', activeFilter)
+      router.push(`/cars?${params.toString()}`)
+    } else {
+      router.push('/cars')
+    }
+  }
+
+  // Handle filter click
+  const handleFilterClick = (filterValue) => {
+    setActiveFilter(filterValue)
+    const params = new URLSearchParams()
+    if (searchTerm.trim()) params.set('search', searchTerm.trim())
+    params.set('filter', filterValue)
+    router.push(`/cars?${params.toString()}`)
+  }
 
   // Fixed particles to prevent hydration mismatch
   // Using fixed values instead of Math.random() to ensure server and client match
@@ -557,7 +581,7 @@ export default function HomePage() {
 
             {/* Advanced Glassmorphic Search Bar */}
             <div className="max-w-4xl mx-auto mb-8 text-reveal" style={{ animationDelay: '0.6s' }}>
-              <div className="search-bar-hero">
+              <form onSubmit={handleSearch} className="search-bar-hero">
                 <div className="flex items-center gap-4">
                   <Search className="text-accent-blue search-icon-pulse flex-shrink-0" size={28} />
                   <input
@@ -566,9 +590,16 @@ export default function HomePage() {
                     className="search-input-hero"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
                   />
+                  <button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex-shrink-0"
+                  >
+                    Search
+                  </button>
                 </div>
-              </div>
+              </form>
 
               {/* Filter Pills */}
               <div className="mt-6 space-y-4">
@@ -580,7 +611,7 @@ export default function HomePage() {
                       <button
                         key={filter.value}
                         className={`filter-pill ${activeFilter === filter.value ? 'active' : ''}`}
-                        onClick={() => setActiveFilter(filter.value)}
+                        onClick={() => handleFilterClick(filter.value)}
                       >
                         <TrendingUp size={16} />
                         {filter.label}
@@ -597,7 +628,7 @@ export default function HomePage() {
                       <button
                         key={make.value}
                         className={`filter-pill ${activeFilter === make.value ? 'active' : ''}`}
-                        onClick={() => setActiveFilter(make.value)}
+                        onClick={() => handleFilterClick(make.value)}
                       >
                         <CarIcon size={16} />
                         {make.label}
@@ -614,7 +645,7 @@ export default function HomePage() {
                       <button
                         key={type.value}
                         className={`filter-pill ${activeFilter === type.value ? 'active' : ''}`}
-                        onClick={() => setActiveFilter(type.value)}
+                        onClick={() => handleFilterClick(type.value)}
                       >
                         <Sparkles size={16} />
                         {type.label}
