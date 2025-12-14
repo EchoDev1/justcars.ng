@@ -62,11 +62,12 @@ function CarsPageContent() {
         is_premium_verified,
         views,
         dealer_id,
-        dealers!inner (
+        body_type,
+        dealers (
           name,
           badge_type
         ),
-        car_images!inner (
+        car_images (
           image_url,
           is_primary
         )
@@ -118,7 +119,42 @@ function CarsPageContent() {
     setTotalCount(count || 0)
     setCars(data || [])
     setLoading(false)
-  }, [filters, searchTerm, sortBy, currentPage])
+  }, [supabase, filters, searchTerm, sortBy, currentPage])
+
+  // Handle URL search params from homepage
+  useEffect(() => {
+    const search = searchParams.get('search')
+    const filter = searchParams.get('filter')
+
+    if (search) {
+      setSearchTerm(search)
+    }
+
+    if (filter) {
+      // Handle different filter types
+      const filterLower = filter.toLowerCase()
+
+      // Check if it's a make (brand)
+      const makes = ['toyota', 'mercedes', 'bmw', 'audi', 'lexus', 'honda', 'nissan', 'ford']
+      if (makes.some(make => filterLower.includes(make))) {
+        setFilters(prev => ({ ...prev, make: filter }))
+      }
+      // Check if it's a body type
+      else if (['suv', 'sedan', 'coupe', 'truck', 'van', 'hatchback'].includes(filterLower)) {
+        setFilters(prev => ({ ...prev, bodyType: filter }))
+      }
+      // Check if it's a budget filter
+      else if (filterLower.includes('luxury') || filterLower.includes('premium')) {
+        setFilters(prev => ({ ...prev, minPrice: '150000000' }))
+      }
+      else if (filterLower.includes('affordable') || filterLower.includes('budget')) {
+        setFilters(prev => ({ ...prev, maxPrice: '10000000' }))
+      }
+      else if (filterLower.includes('mid')) {
+        setFilters(prev => ({ ...prev, minPrice: '10000000', maxPrice: '150000000' }))
+      }
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetchCars()
