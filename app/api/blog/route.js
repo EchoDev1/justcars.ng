@@ -17,7 +17,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get single post by slug
     if (slug) {

@@ -23,6 +23,7 @@ function CarsPageContent() {
   const ITEMS_PER_PAGE = 12
   const [filters, setFilters] = useState({
     make: searchParams.get('make') || '',
+    brandLetter: searchParams.get('brandLetter') || '',
     minPrice: '',
     maxPrice: '',
     minYear: '',
@@ -75,6 +76,7 @@ function CarsPageContent() {
 
     // Apply filters - use ilike for case-insensitive exact matching on text fields
     if (filters.make) query = query.ilike('make', filters.make)
+    if (filters.brandLetter) query = query.ilike('make', `${filters.brandLetter}%`)
     if (filters.minPrice) query = query.gte('price', parseFloat(filters.minPrice))
     if (filters.maxPrice) query = query.lte('price', parseFloat(filters.maxPrice))
     if (filters.minYear) query = query.gte('year', parseInt(filters.minYear))
