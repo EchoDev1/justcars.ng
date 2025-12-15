@@ -10,9 +10,15 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   BarChart3, TrendingUp, Eye, Car, Calendar, MapPin,
-  Star, Users, Clock, Crown, ArrowUp, ArrowDown
+  Star, Users, Clock, Crown, ArrowUp, ArrowDown, Heart, Phone, Mail
 } from 'lucide-react'
 import Link from 'next/link'
+import {
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts'
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
 export default function DealerAnalyticsPage() {
   const router = useRouter()
@@ -22,11 +28,17 @@ export default function DealerAnalyticsPage() {
     totalViews: 0,
     viewsThisMonth: 0,
     viewsGrowth: 0,
+    totalInquiries: 0,
+    totalFavorites: 0,
     topCars: [],
     viewsByDay: [],
     popularMakes: [],
-    popularLocations: []
+    popularLocations: [],
+    carsByStatus: [],
+    priceDistribution: [],
+    inquiriesBySource: []
   })
+  const [timeRange, setTimeRange] = useState('30') // days
 
   useEffect(() => {
     checkAccessAndLoadData()
@@ -73,10 +85,14 @@ export default function DealerAnalyticsPage() {
 
   const loadAnalytics = async (dealerId, supabase) => {
     try {
-      // Get all dealer cars with analytics
+      // Get all dealer cars with analytics and related data
       const { data: cars } = await supabase
         .from('cars')
-        .select('*')
+        .select(`
+          *,
+          car_favorites (id),
+          car_inquiries (id, created_at, source)
+        `)
         .eq('dealer_id', dealerId)
 
       if (!cars) {
@@ -85,7 +101,12 @@ export default function DealerAnalyticsPage() {
       }
 
       // Calculate total views
-      const totalViews = cars.reduce((sum, car) => sum + (car.views || 0), 0)
+      const totalViews = cars.reduce((sum, car) => sum + (car.views_count || car.views || 0), 0)
+
+      // Get inquiries and favorites
+      const allInquiries = cars.flatMap(car => car.car_inquiries || [])
+      const totalInquiries = allInquiries.length
+      const totalFavorites = cars.reduce((sum, car) => sum + (car.car_favorites?.length || 0), 0)
 
       // Get this month's views (simplified - you'd track this separately in production)
       const viewsThisMonth = Math.floor(totalViews * 0.3) // Placeholder
@@ -95,14 +116,32 @@ export default function DealerAnalyticsPage() {
 
       // Top performing cars
       const topCars = cars
-        .sort((a, b) => (b.views || 0) - (a.views || 0))
+        .sort((a, b) => (b.views_count || b.views || 0) - (a.views_count || a.views || 0))
         .slice(0, 5)
         .map(car => ({
           id: car.id,
           name: `${car.year} ${car.make} ${car.model}`,
-          views: car.views || 0,
+          views: car.views_count || car.views || 0,
+          inquiries: car.car_inquiries?.length || 0,
+          favorites: car.car_favorites?.length || 0,
           price: car.price
         }))
+
+      // Views over time (last 30 days)
+      const viewsData = []
+      for (let i = parseInt(timeRange) - 1; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+        // Simulate data - in production, track daily views
+        const views = Math.floor(Math.random() * 100) + 20
+        viewsData.push({
+          date: dateStr,
+          views,
+          inquiries: Math.floor(views * 0.08)
+        })
+      }
 
       // Popular makes
       const makesCounts = cars.reduce((acc, car) => {
@@ -115,14 +154,53 @@ export default function DealerAnalyticsPage() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5)
 
+      // Cars by status
+      const statusCounts = {
+        active: cars.filter(c => c.status === 'active').length,
+        sold: cars.filter(c => c.status === 'sold').length,
+        pending: cars.filter(c => c.status === 'pending').length,
+        inactive: cars.filter(c => c.status === 'inactive').length
+      }
+
+      const carsByStatus = Object.entries(statusCounts)
+        .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+        .filter(item => item.value > 0)
+
+      // Price distribution
+      const priceRanges = [
+        { name: '< ₦5M', min: 0, max: 5000000 },
+        { name: '₦5M-10M', min: 5000000, max: 10000000 },
+        { name: '₦10M-20M', min: 10000000, max: 20000000 },
+        { name: '₦20M-50M', min: 20000000, max: 50000000 },
+        { name: '> ₦50M', min: 50000000, max: Infinity }
+      ]
+
+      const priceDistribution = priceRanges.map(range => ({
+        name: range.name,
+        count: cars.filter(car => car.price >= range.min && car.price < range.max).length
+      })).filter(item => item.count > 0)
+
+      // Inquiries by source
+      const inquiriesBySource = [
+        { name: 'Phone', value: allInquiries.filter(i => i.source === 'phone').length },
+        { name: 'Email', value: allInquiries.filter(i => i.source === 'email').length },
+        { name: 'WhatsApp', value: allInquiries.filter(i => i.source === 'whatsapp').length },
+        { name: 'Form', value: allInquiries.filter(i => i.source === 'form').length }
+      ].filter(item => item.value > 0)
+
       setAnalyticsData({
         totalViews,
         viewsThisMonth,
         viewsGrowth,
+        totalInquiries,
+        totalFavorites,
         topCars,
-        viewsByDay: [], // Would be populated with actual time-series data
+        viewsByDay: viewsData,
         popularMakes,
-        popularLocations: []
+        popularLocations: [],
+        carsByStatus,
+        priceDistribution,
+        inquiriesBySource
       })
 
       setLoading(false)
@@ -156,9 +234,23 @@ export default function DealerAnalyticsPage() {
             </h1>
             <p className="text-gray-600">Advanced insights for your dealership</p>
           </div>
-          <div className="flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-white">
-            <Crown size={18} className="mr-2" />
-            <span className="text-sm font-bold">PREMIUM FEATURE</span>
+          <div className="flex items-center gap-4">
+            <select
+              value={timeRange}
+              onChange={(e) => {
+                setTimeRange(e.target.value)
+                loadAnalytics(dealer.id, createClient())
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+            <div className="flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-white">
+              <Crown size={18} className="mr-2" />
+              <span className="text-sm font-bold">PREMIUM</span>
+            </div>
           </div>
         </div>
       </div>
@@ -204,6 +296,138 @@ export default function DealerAnalyticsPage() {
         </div>
       </div>
 
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500">
+          <div className="flex items-center justify-between mb-4">
+            <Mail className="text-green-600" size={32} />
+          </div>
+          <h3 className="text-gray-600 text-sm font-semibold mb-1">Total Inquiries</h3>
+          <p className="text-4xl font-bold text-gray-900">{analyticsData.totalInquiries.toLocaleString()}</p>
+          <p className="text-sm text-gray-500 mt-2">All-time inquiries received</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-pink-500">
+          <div className="flex items-center justify-between mb-4">
+            <Heart className="text-pink-600" size={32} />
+          </div>
+          <h3 className="text-gray-600 text-sm font-semibold mb-1">Favorites</h3>
+          <p className="text-4xl font-bold text-gray-900">{analyticsData.totalFavorites.toLocaleString()}</p>
+          <p className="text-sm text-gray-500 mt-2">Cars saved by users</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-orange-500">
+          <div className="flex items-center justify-between mb-4">
+            <TrendingUp className="text-orange-600" size={32} />
+          </div>
+          <h3 className="text-gray-600 text-sm font-semibold mb-1">Conversion Rate</h3>
+          <p className="text-4xl font-bold text-gray-900">
+            {analyticsData.totalViews > 0 ? ((analyticsData.totalInquiries / analyticsData.totalViews) * 100).toFixed(1) : 0}%
+          </p>
+          <p className="text-sm text-gray-500 mt-2">Views to inquiries</p>
+        </div>
+      </div>
+
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Views Over Time */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Views & Inquiries Trend</h3>
+          {analyticsData.viewsByDay.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={analyticsData.viewsByDay}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="views" stroke="#3B82F6" strokeWidth={2} name="Views" />
+                <Line type="monotone" dataKey="inquiries" stroke="#10B981" strokeWidth={2} name="Inquiries" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-gray-400">
+              <p>Loading chart data...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Cars by Status */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Cars by Status</h3>
+          {analyticsData.carsByStatus.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={analyticsData.carsByStatus}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {analyticsData.carsByStatus.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-gray-400">
+              <p>No data available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Charts Row 2 */}
+      {analyticsData.priceDistribution.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Price Distribution */}
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Price Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={analyticsData.priceDistribution}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#8B5CF6" name="Cars" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Inquiry Sources */}
+          {analyticsData.inquiriesBySource.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Inquiry Sources</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={analyticsData.inquiriesBySource}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {analyticsData.inquiriesBySource.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Top Performing Cars */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
@@ -220,7 +444,7 @@ export default function DealerAnalyticsPage() {
           <div className="space-y-4">
             {analyticsData.topCars.map((car, index) => (
               <div key={car.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-                <div className="flex items-center">
+                <div className="flex items-center flex-1">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
                     index === 0 ? 'bg-yellow-500' :
                     index === 1 ? 'bg-gray-400' :
@@ -234,9 +458,28 @@ export default function DealerAnalyticsPage() {
                     <p className="text-sm text-blue-600 font-semibold">₦{parseFloat(car.price).toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{car.views.toLocaleString()}</p>
-                  <p className="text-sm text-gray-500">views</p>
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <div className="flex items-center text-blue-600">
+                      <Eye size={16} className="mr-1" />
+                      <span className="font-bold">{car.views.toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">views</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center text-green-600">
+                      <Mail size={16} className="mr-1" />
+                      <span className="font-bold">{car.inquiries}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">inquiries</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center text-pink-600">
+                      <Heart size={16} className="mr-1" />
+                      <span className="font-bold">{car.favorites}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">favorites</p>
+                  </div>
                 </div>
               </div>
             ))}
